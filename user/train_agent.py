@@ -552,13 +552,46 @@ def combo_damage_reward(env: WarehouseBrawl, weight: float = 0.1) -> float:
     dmg = getattr(opponent, "damage_taken_this_frame", 0.0)
     return dmg * weight
 
-def survival_and_adaptivity_reward(env: WarehouseBrawl, weight: float = 0.5) -> float:
-    """continuous reward for avoiding damage and keeping center stage"""
+def survival_reward(env: WarehouseBrawl, weight: float = 0.5) -> float:
+    """continuous reward for avoiding damage"""
     player = env.objects["player"]
     damage_taken = player.damage_taken_this_frame
     # keep near center x ~ 0 while staying alive
-    center_dist = abs(player.body.position.x)
-    return (-damage_taken * 0.5 + max(0, 1 - center_dist/6.0) * 0.1) * weight * env.dt
+    # center_dist = abs(player.body.position.x)
+    return (-damage_taken * 0.5) * weight * env.dt
+
+def approach_opponent_reward(env: WarehouseBrawl, weight: float = 1.0):
+    """rewards approaching teh opponent to trade"""
+    player = env.objects["player"]
+    opponent = env.objects["opponent"]
+    distance = abs(player.body.position.x - opponent.body.position.x)
+    return -distance * 0.01 * weight
+
+def no_idle_reward(env: WarehouseBrawl, weight: float = 0.5):
+    """penalizes for staying still - rewards constant movement"""
+    player = env.objects["player"]
+    vel = abs(player.body.velocity.x) + abs(player.body.velocity.y)
+    return 0.02 * weight if vel > 0.1 else -0.02
+
+def penalize_drop_weapon(env: WarehouseBrawl, weight: float):
+    """penalizes dropping weapon (going from armed -> unarmed or from a stronger -> weaker weapon) [heavily]. swapping is okay, but only if the new weapon is stronger"""
+
+
+def penalize_miss_attack(env: WarehouseBrawl, weight: float = 0.5):
+    """penalize for missing attacks"""
+    player = env.objects["player"]
+    opponent = env.objects["opponent"]
+
+    # Detect that we ATTEMPTED an attack
+    attacked = getattr(player, "attacked_this_frame", False)
+
+    # Detect whether damage was done
+    did_damage = opponent.damage_taken_this_frame > 0
+
+    if attacked and not did_damage:
+        return -1 * weight  # Small penalty for missing
+    return 0
+
 
 '''
 Add your dictionary of RewardFunctions here using RewTerms
@@ -567,15 +600,17 @@ def gen_reward_manager():
     reward_functions = {
         #'target_height_reward': RewTerm(func=base_height_l2, weight=0.0, params={'target_height': -4, 'obj_name': 'player'}),
         'danger_zone_reward': RewTerm(func=danger_zone_reward, weight=0.5),
-        'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.0),
+        'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.5),
         #'head_to_middle_reward': RewTerm(func=head_to_middle_reward, weight=0.01),
         #'head_to_opponent': RewTerm(func=head_to_opponent, weight=0.05),
         'penalize_attack_reward': RewTerm(func=in_state_reward, weight=-0.04, params={'desired_state': AttackState}),
-        'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.01),
+        'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.02),
         #'taunt_reward': RewTerm(func=in_state_reward, weight=0.2, params={'desired_state': TauntState}),
         'combo_length_reward': RewTerm(func=combo_length_reward, weight=0.4),
-        'combo_damage_reward': RewTerm(func=combo_damage_reward, weight=0.2),
-        'survival_and_adaptivity_reward': RewTerm(func=survival_and_adaptivity_reward, weight=0.6),
+        'combo_damage_reward': RewTerm(func=combo_damage_reward, weight=0.3),
+        'survival_reward': RewTerm(func=survival_reward, weight=0.6),
+        'approach_opponent': RewTerm(func=approach_opponent_reward, weight=1.0),
+        'no_idle': RewTerm(func=no_idle_reward, weight=0.5)
     }
     signal_subscriptions = {
         'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=50)),
@@ -616,7 +651,7 @@ if __name__ == '__main__':
         save_freq=100_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_9',
+        run_name='experiment_a',
         mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
     )
 
@@ -638,6 +673,6 @@ if __name__ == '__main__':
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps=1_000,#1_000_000_000,
+        train_timesteps= 1_000_000,
         train_logging=TrainLogging.PLOT
     )

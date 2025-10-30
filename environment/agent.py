@@ -1035,8 +1035,8 @@ def train(agent: Agent,
     if save_handler is not None:
         save_handler.save_agent()
 
-    if train_logging == TrainLogging.PLOT:
-        plot_results(log_dir)
+    # if train_logging == TrainLogging.PLOT:
+    #     plot_results(log_dir)
 
 ## Run Human vs AI match function
 import pygame

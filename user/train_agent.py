@@ -574,7 +574,8 @@ def no_idle_reward(env: WarehouseBrawl, weight: float = 0.5):
     return 0.02 * weight if vel > 0.1 else -0.02
 
 def penalize_drop_weapon(env: WarehouseBrawl, weight: float):
-    """penalizes dropping weapon (going from armed -> unarmed or from a stronger -> weaker weapon) [heavily]. swapping is okay, but only if the new weapon is stronger"""
+    """penalizes dropping weapon (going from armed -> unarmed or from a stronger -> weaker weapon) [heavily].
+    swapping is okay, but only if the new weapon is stronger"""
 
 
 def penalize_miss_attack(env: WarehouseBrawl, weight: float = 0.5):
@@ -604,7 +605,7 @@ def gen_reward_manager():
         #'head_to_middle_reward': RewTerm(func=head_to_middle_reward, weight=0.01),
         #'head_to_opponent': RewTerm(func=head_to_opponent, weight=0.05),
         'penalize_attack_reward': RewTerm(func=in_state_reward, weight=-0.04, params={'desired_state': AttackState}),
-        'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.02),
+        'holding_more_than_3_keys': RewTerm(func=holding_more_than_3_keys, weight=-0.05),
         #'taunt_reward': RewTerm(func=in_state_reward, weight=0.2, params={'desired_state': TauntState}),
         'combo_length_reward': RewTerm(func=combo_length_reward, weight=0.4),
         'combo_damage_reward': RewTerm(func=combo_damage_reward, weight=0.3),
@@ -651,7 +652,7 @@ if __name__ == '__main__':
         save_freq=100_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_a',
+        run_name='experiment_f',
         mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
     )
 

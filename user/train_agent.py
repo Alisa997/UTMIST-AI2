@@ -502,7 +502,7 @@ def holding_more_than_3_keys(
 
     # Apply penalty if the player is holding more than 3 keys
     a = player.cur_action
-    if (a > 0.5).sum() > 3:
+    if (a > 0.5).sum() >= 3:
         return env.dt
     return 0
 
@@ -573,9 +573,39 @@ def no_idle_reward(env: WarehouseBrawl, weight: float = 0.5):
     vel = abs(player.body.velocity.x) + abs(player.body.velocity.y)
     return 0.02 * weight if vel > 0.1 else -0.02
 
-def penalize_drop_weapon(env: WarehouseBrawl, weight: float):
+def penalize_drop_weapon(env: WarehouseBrawl, weight: float = 1.5):
     """penalizes dropping weapon (going from armed -> unarmed or from a stronger -> weaker weapon) [heavily].
     swapping is okay, but only if the new weapon is stronger"""
+    player = env.objects["player"]
+
+    weapon_tier = {
+        "Punch": 0,
+        "Spear": 1,
+        "Hammer": 2,
+    }
+
+    # Initialize prev_weapon on first call
+    if not hasattr(player, "prev_weapon"):
+        player.prev_weapon = player.weapon
+
+    prev_weapon = player.prev_weapon
+    curr_weapon = player.weapon
+
+    player.prev_weapon = curr_weapon
+
+    # No change or first frame → no penalty
+    if prev_weapon == curr_weapon:
+        return 0.0
+
+    prev_power = weapon_tier.get(prev_weapon, 0)
+    curr_power = weapon_tier.get(curr_weapon, 0)
+
+    # Penalize downgrades only
+    if curr_power < prev_power:
+        diff = prev_power - curr_power
+        return -diff * weight * env.dt
+
+    return 0.0
 
 
 def penalize_miss_attack(env: WarehouseBrawl, weight: float = 0.5):
@@ -593,6 +623,21 @@ def penalize_miss_attack(env: WarehouseBrawl, weight: float = 0.5):
         return -1 * weight  # Small penalty for missing
     return 0
 
+def edge_safety_penalty(env: WarehouseBrawl, weight: float = 2.0):
+    """penalizes being near the edge of the stage to encourage staying near the center."""
+    player = env.objects["player"]
+    stage_half_width = 29.8 / 2
+    edge_threshold = stage_half_width * 0.8
+    if abs(player.body.position.x) > edge_threshold:
+        return -weight * env.dt
+    return 0.0
+
+def recovery_reward(env: WarehouseBrawl, bonus: float = 3.0):
+    """Rewards successful recoveries after being off-stage."""
+    player = env.objects["player"]
+    if getattr(player, "in_air", False):
+        return bonus * env.dt
+    return 0.0
 
 '''
 Add your dictionary of RewardFunctions here using RewTerms
@@ -611,8 +656,12 @@ def gen_reward_manager():
         'combo_damage_reward': RewTerm(func=combo_damage_reward, weight=0.3),
         'survival_reward': RewTerm(func=survival_reward, weight=0.6),
         'approach_opponent': RewTerm(func=approach_opponent_reward, weight=1.0),
-        'no_idle': RewTerm(func=no_idle_reward, weight=0.5)
-    }
+        'no_idle': RewTerm(func=no_idle_reward, weight=0.5),
+        'edge_safety_penalty': RewTerm(func=edge_safety_penalty, weight=1.0),
+        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
+        'penalize_drop_weapon': RewTerm(func=penalize_drop_weapon, weight=1.5),
+        'penalize_miss_attack': RewTerm(func=penalize_miss_attack, weight=0.5)
+        }
     signal_subscriptions = {
         'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=50)),
         'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=8)),
@@ -630,7 +679,7 @@ The main function runs training. You can change configurations such as the Agent
 '''
 if __name__ == '__main__':
     # Create agent
-    my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor)
+    my_agent = CustomAgent(sb3_class=PPO, file_path = r"C:\Users\shubh\OneDrive\Desktop\UTMIST-AI2-1\checkpoints\experiment_e\rl_model_17807968_steps.zip", extractor=MLPExtractor)
 
     # Start here if you want to train from scratch. e.g:
     #my_agent = RecurrentPPOAgent()
@@ -652,8 +701,8 @@ if __name__ == '__main__':
         save_freq=100_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_f',
-        mode=SaveHandlerMode.FORCE # Save mode, FORCE or RESUME
+        run_name='experiment_e',
+        mode=SaveHandlerMode.RESUME # Save mode, FORCE or RESUME
     )
 
     # Set opponent settings here:
@@ -663,17 +712,15 @@ if __name__ == '__main__':
     #                 'based_agent': (1.5, partial(BasedAgent)),
     #             }
     opponent_specification = {
-                    'based_agent': (2.0, partial(BasedAgent)),
-                    'constant_agent': (1.0, partial(ConstantAgent)),
-                    'self_play': (0.1, selfplay_handler),  # small at start
-                }
+    'based_agent': (1.0, partial(BasedAgent))}
     opponent_cfg = OpponentsCfg(opponents=opponent_specification)
+
 
     train(my_agent,
         reward_manager,
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps= 1_000_000,
+        train_timesteps= 2_000_000,
         train_logging=TrainLogging.PLOT
     )

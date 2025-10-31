@@ -16,7 +16,7 @@ match_time = 99999
 run_match(
     agent_1=my_agent,
     agent_2=opponent,
-    max_timesteps=300 * match_time,  # Match time in frames (adjust as needed)
+    max_timesteps=30 * match_time,  # Match time in frames (adjust as needed)
     resolution=CameraResolution.LOW,
     video_path='tt_agent.mp4' #NOTE: you can change the save path of the video here
 )

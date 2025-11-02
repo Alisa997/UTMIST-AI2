@@ -645,7 +645,7 @@ Add your dictionary of RewardFunctions here using RewTerms
 def gen_reward_manager():
     reward_functions = {
         #'target_height_reward': RewTerm(func=base_height_l2, weight=0.0, params={'target_height': -4, 'obj_name': 'player'}),
-        'danger_zone_reward': RewTerm(func=danger_zone_reward, weight=0.5),
+        'danger_zone_reward': RewTerm(func=danger_zone_reward, weight=1.5),
         'damage_interaction_reward': RewTerm(func=damage_interaction_reward, weight=1.5),
         #'head_to_middle_reward': RewTerm(func=head_to_middle_reward, weight=0.01),
         #'head_to_opponent': RewTerm(func=head_to_opponent, weight=0.05),
@@ -657,15 +657,15 @@ def gen_reward_manager():
         'survival_reward': RewTerm(func=survival_reward, weight=0.6),
         'approach_opponent': RewTerm(func=approach_opponent_reward, weight=1.0),
         'no_idle': RewTerm(func=no_idle_reward, weight=0.5),
-        'edge_safety_penalty': RewTerm(func=edge_safety_penalty, weight=1.0),
-        'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
+        #'edge_safety_penalty': RewTerm(func=edge_safety_penalty, weight=1.0),
+        #'recovery_reward': RewTerm(func=recovery_reward, weight=1.0),
         'penalize_drop_weapon': RewTerm(func=penalize_drop_weapon, weight=1.5),
-        'penalize_miss_attack': RewTerm(func=penalize_miss_attack, weight=0.5)
+        'penalize_miss_attack': RewTerm(func=penalize_miss_attack, weight=0.9)
         }
     signal_subscriptions = {
-        'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=50)),
-        'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=8)),
-        'on_combo_reward': ('hit_during_stun', RewTerm(func=on_combo_reward, weight=5)),
+        'on_win_reward': ('win_signal', RewTerm(func=on_win_reward, weight=100)),
+        'on_knockout_reward': ('knockout_signal', RewTerm(func=on_knockout_reward, weight=20)),
+        #'on_combo_reward': ('hit_during_stun', RewTerm(func=on_combo_reward, weight=5)),
         'on_equip_reward': ('weapon_equip_signal', RewTerm(func=on_equip_reward, weight=10)),
         'on_drop_reward': ('weapon_drop_signal', RewTerm(func=on_drop_reward, weight=15))
     }
@@ -679,7 +679,7 @@ The main function runs training. You can change configurations such as the Agent
 '''
 if __name__ == '__main__':
     # Create agent
-    my_agent = CustomAgent(sb3_class=PPO, file_path = r"C:\Users\shubh\OneDrive\Desktop\UTMIST-AI2-1\checkpoints\experiment_e\rl_model_17807968_steps.zip", extractor=MLPExtractor)
+    my_agent = CustomAgent(sb3_class=PPO, extractor=MLPExtractor)
 
     # Start here if you want to train from scratch. e.g:
     #my_agent = RecurrentPPOAgent()
@@ -698,29 +698,27 @@ if __name__ == '__main__':
     # Set save settings here:
     save_handler = SaveHandler(
         agent=my_agent, # Agent to save
-        save_freq=100_000, # Save frequency
+        save_freq=1_200_000, # Save frequency
         max_saved=40, # Maximum number of saved models
         save_path='checkpoints', # Save path
-        run_name='experiment_e',
-        mode=SaveHandlerMode.RESUME # Save mode, FORCE or RESUME
+        run_name='experiment_g',
+        mode=SaveHandlerMode.RESUME  # Save mode, FORCE or RESUME
     )
 
     # Set opponent settings here:
-    # opponent_specification = {
-    #                 'self_play': (8, selfplay_handler),
-    #                 'constant_agent': (0.5, partial(ConstantAgent)),
-    #                 'based_agent': (1.5, partial(BasedAgent)),
-    #             }
     opponent_specification = {
-    'based_agent': (1.0, partial(BasedAgent))}
+                    'self_play': (1, selfplay_handler),
+                    'SB3_agent': (3, partial(SB3Agent)),
+                    'clockwork_agent': (3, partial(ClockworkAgent)),
+                    'based_agent': (3, partial(BasedAgent)),
+                }
     opponent_cfg = OpponentsCfg(opponents=opponent_specification)
-
 
     train(my_agent,
         reward_manager,
         save_handler,
         opponent_cfg,
         CameraResolution.LOW,
-        train_timesteps= 2_000_000,
+        train_timesteps=6_000_000,
         train_logging=TrainLogging.PLOT
     )

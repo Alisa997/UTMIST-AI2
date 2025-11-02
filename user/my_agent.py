@@ -32,7 +32,7 @@ class SubmittedAgent(Agent):
     '''
     def __init__(
         self,
-        file_path: Optional[str] = r"C:\Users\shubh\OneDrive\Desktop\UTMIST-AI2-1\checkpoints\experiment_e\rl_model_17807968_steps.zip"
+        file_path: Optional[str] = None
     ):
         super().__init__(file_path)
 
